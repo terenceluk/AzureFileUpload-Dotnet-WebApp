@@ -1,0 +1,56 @@
+@page
+@model AzureFileUpload.Pages.UploadModel
+
+@if (TempData["Warning"] != null)
+{
+    <div class="alert alert-warning" role="alert">
+        @TempData["Warning"]
+    </div>
+}
+
+@if (TempData["Failure"] != null)
+{
+    <div class="alert alert-danger" role="alert">
+        @Html.Raw(TempData["Failure"])
+    </div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success" role="alert">
+        @Html.Raw(TempData["Success"])
+    </div>
+}
+
+<h1>Upload a file</h1>
+
+<form method="post" enctype="multipart/form-data">
+    <div>
+        <input type="file" id="fileInput" name="Files" multiple />
+    </div>
+    <div>
+        <span asp-validation-for="Files" class="text-danger"></span>
+    </div>
+    <div id="fileList"></div>
+    <br/>
+    <label>
+        <input type="checkbox" asp-for="Overwrite" /> Overwrite if file exists?
+    </label>
+    <br/>
+    <button type="submit">Upload</button>
+</form>
+
+<script>
+window.onload = function() {
+    document.getElementById('fileInput').addEventListener('change', function(evt) {
+        let output = [];
+        let files = evt.target.files;
+
+        for (let i = 0, f; f = files[i]; i++) {
+            output.push('<li>', escape(f.name), '</li>');
+        }
+
+        document.getElementById('fileList').innerHTML = '<ul>' + output.join('') + '</ul>';
+    });
+};
+</script>
