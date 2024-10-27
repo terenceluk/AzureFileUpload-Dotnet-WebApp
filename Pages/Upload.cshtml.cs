@@ -6,8 +6,10 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Configuration;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using System.Threading.Tasks;
 using Azure;
+using System.Linq;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace AzureFileUpload.Pages
 {
@@ -41,6 +43,34 @@ namespace AzureFileUpload.Pages
             var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
             var successfulUploads = new List<string>();
             var failedUploads = new List<string>();
+            
+            // Debug all claims 
+            foreach (var claim in User.Claims)
+            {
+                System.Diagnostics.Debug.WriteLine($"Claim Type: {claim.Type}, Claim Value: {claim.Value}");
+            }
+
+            // Get User Principal Name and Object ID from the authenticated user's claims
+            string userPrincipalName = User.Claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value;
+            string objectId = User.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+
+            // Create metadata dictionary that accepts null values
+            var metadata = new Dictionary<string, string?>
+            {
+                {"userprincipalname", userPrincipalName},
+                {"objectid", objectId}
+            };
+
+            // Use the null-checking code with a dictionary that allows nullable values.
+            if (!string.IsNullOrEmpty(userPrincipalName))
+            {
+                metadata["userprincipalname"] = userPrincipalName;
+            }
+
+            if (!string.IsNullOrEmpty(objectId))
+            {
+                metadata["objectid"] = objectId;
+            }
 
             foreach (var file in Files)
             {
@@ -81,7 +111,7 @@ namespace AzureFileUpload.Pages
                 {
                     using (var stream = file.OpenReadStream())
                     {
-                        await blobClient.UploadAsync(stream, new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = file.ContentType } });
+                        await blobClient.UploadAsync(stream, new BlobUploadOptions { Metadata = metadata, HttpHeaders = new BlobHttpHeaders { ContentType = file.ContentType } });
                     }
 
                     successfulUploads.Add(file.FileName);
@@ -105,10 +135,10 @@ namespace AzureFileUpload.Pages
 
             if (failedUploads.Any())
             {
-                TempData["Failure"] += "Failed to upload files because they already exist:<br/>" + string.Join("<br/>", failedUploads);
+                TempData["Failure"] += $"Failed to upload files because they already exist:<br/>" + string.Join("<br/>", failedUploads);
             }
 
             return RedirectToPage();
         }
-   }
+    }
 }
